@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background: url('https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwzNjUyOXwwfDF8c2VhcmNofDV8fGNoYXQlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTY4NzAzMjA2Ng&ixlib=rb-4.0.3&q=80&w=1920') no-repeat center center fixed; 
+           
+            color: #fff; 
+        }
+        #header {
+            text-align: center;
+            font-size: 30px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #chat-container {
+            max-width: 800px;
+            height: calc(90vh - 60px); /* Full height minus header and input area */
+            margin: 0 auto;
+           
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+        }
+        #messages {
+            list-style-type: none; 
+            margin: 0; 
+            padding: 10px; 
+            height: calc(100% - 100px); /* Full height minus input area */
+            overflow-y: auto; 
+        }
+        #messages li {
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 5px 0; 
+            word-wrap: break-word;
+        }
+        .message-left {
+            
+            color: rgb(251, 245, 251); 
+            text-align: left; 
+        }
+        .message-right {
+            
+            color: rgb(247, 133, 158); 
+            text-align: right; 
+            margin-left: auto; 
+        }
+        #input-container {
+            display: flex; 
+            padding: 10px; 
+            border-top: 1px solid #f2dcdc; 
+            background: rgba(244, 240, 240, 0.8);
+        }
+        #messageInput { 
+            flex: 1; 
+            padding: 10px; 
+            border: none; 
+            border-radius: 5px; 
+            margin-right: 10px;
+        }
+        #sendButton { 
+            padding: 10px; 
+            border: none; 
+            border-radius: 5px; 
+            background: #1680e3; 
+            color: rgb(240, 235, 235); 
+            cursor: pointer; 
+        }
+        #sendButton:hover { 
+            background: #7437ed; 
+        }
+        #timer { 
+            margin: 10px; 
+            font-weight: bold; 
+        }
+        #usernamePrompt {
+            display: none;
+            margin: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(47, 30, 30, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="header">SkyChat Online</div>
+    <div id="chat-container">
+        <ul id="messages"></ul>
+        <div id="input-container">
+            <input id="messageInput" autocomplete="off" placeholder="Type your message here..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+    <div id="timer">Connected for: <span id="time">0</span> seconds</div>
+
+    <div id="usernamePrompt">
+        <input id="usernameInput" placeholder="Enter your name" />
+        <button id="setUsernameButton">Set Username</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const messages = document.getElementById('messages');
+        const timeDisplay = document.getElementById('time');
+        const usernamePrompt = document.getElementById('usernamePrompt');
+        const usernameInput = document.getElementById('usernameInput');
+        const setUsernameButton = document.getElementById('setUsernameButton');
+        const sendButton = document.getElementById('sendButton');
+        const input = document.getElementById('messageInput');
+
+        let startTime = Date.now();
+
+        setInterval(() => {
+            const seconds = Math.floor((Date.now() - startTime) / 1000);
+            timeDisplay.textContent = seconds;
+        }, 1000);
+
+        // Prompt for username
+        socket.on('request_username', () => {
+            usernamePrompt.style.display = 'block';
+        });
+
+        setUsernameButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('set_username', { username });
+                usernamePrompt.style.display = 'none';
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
+            const msg = input.value;
+            if (msg) {
+                // Emit message and display it on the right
+                const item = document.createElement('li');
+                item.textContent = `You: ${msg}`;
+                item.className = 'message-right';
+                messages.appendChild(item);
+                
+                socket.emit('message', msg); // Send message to server
+                input.value = ''; // Clear input field
+                messages.scrollTop = messages.scrollHeight; // Auto scroll
+            }
+        });
+
+        socket.on('message', (data) => {
+            const item = document.createElement('li');
+            item.textContent = `${data.username}: ${data.msg}`;
+            item.className = 'message-left';
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight; // Auto scroll
+        });
+
+        socket.on('user_connected', (data) => {
+            const item = document.createElement('li');
+            item.textContent = `${data.username} connected.`;
+            item.className = 'message-left';
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight; // Auto scroll
+        });
+
+        socket.on('user_disconnected', (data) => {
+            const item = document.createElement('li');
+            item.textContent = `${data.username} disconnected.`;
+            item.className = 'message-left';
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight; // Auto scroll
+        });
+    </script>
+</body>
+</html>
